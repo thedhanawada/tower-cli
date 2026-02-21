@@ -7,7 +7,7 @@ Tower gives you a middle ground. It sits between Claude Code and tool execution 
 ## Install
 
 ```bash
-pip install tower-cli
+pip install cc-tower
 tower init
 ```
 
