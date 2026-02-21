@@ -11,19 +11,27 @@ from tower.interactive import run_interactive_config
 
 def cmd_init(args):
     """Generate default tower-rules.yml and install the hook."""
+    if args.local:
+        base_dir = os.getcwd()
+        settings_dir = os.path.join(base_dir, ".claude")
+        config_path = os.path.join(base_dir, "tower-rules.yml")
+    else:
+        base_dir = os.path.join(os.path.expanduser("~"), ".claude")
+        settings_dir = base_dir
+        config_path = os.path.join(base_dir, "tower-rules.yml")
+
     # Write config
-    config_path = os.path.join(os.getcwd(), "tower-rules.yml")
     if os.path.exists(config_path) and not args.force:
         print(f"Config already exists: {config_path}")
         print("Use --force to overwrite.")
         return 1
 
+    os.makedirs(os.path.dirname(config_path), exist_ok=True)
     with open(config_path, "w") as f:
         f.write(DEFAULT_CONFIG)
     print(f"Created {config_path}")
 
-    # Install hook into .claude/settings.json
-    settings_dir = os.path.join(os.getcwd(), ".claude")
+    # Install hook into settings.json
     settings_path = os.path.join(settings_dir, "settings.json")
 
     os.makedirs(settings_dir, exist_ok=True)
@@ -93,25 +101,31 @@ def cmd_status(args):
             parts.append(f"  reason: {rule['reason']}")
         print("\n".join(parts))
 
-    # Check hook installation
+    # Check hook installation in both local and global settings
     print()
-    settings_path = os.path.join(os.getcwd(), ".claude", "settings.json")
-    if os.path.exists(settings_path):
-        with open(settings_path) as f:
-            settings = json.load(f)
-        hooks = settings.get("hooks", {}).get("PreToolUse", [])
-        tower_installed = any(
-            any(
-                h.get("command", "").startswith("tower") for h in e.get("hooks", [])
+    settings_paths = [
+        os.path.join(os.getcwd(), ".claude", "settings.json"),
+        os.path.join(os.path.expanduser("~"), ".claude", "settings.json"),
+    ]
+    hook_found = False
+    for settings_path in settings_paths:
+        if os.path.exists(settings_path):
+            with open(settings_path) as f:
+                settings = json.load(f)
+            hooks = settings.get("hooks", {}).get("PreToolUse", [])
+            tower_installed = any(
+                any(
+                    h.get("command", "").startswith("tower")
+                    for h in e.get("hooks", [])
+                )
+                for e in hooks
             )
-            for e in hooks
-        )
-        if tower_installed:
-            print("Hook: installed")
-        else:
-            print("Hook: NOT installed (run 'tower init')")
-    else:
-        print("Hook: NOT installed (no .claude/settings.json found)")
+            if tower_installed:
+                print(f"Hook: installed ({settings_path})")
+                hook_found = True
+                break
+    if not hook_found:
+        print("Hook: NOT installed (run 'tower init')")
 
     return 0
 
@@ -142,6 +156,11 @@ def main():
     init_parser = subparsers.add_parser("init", help="Initialize Tower config and hook")
     init_parser.add_argument(
         "--force", action="store_true", help="Overwrite existing config"
+    )
+    init_parser.add_argument(
+        "--local",
+        action="store_true",
+        help="Install config and hook in the current project directory instead of globally",
     )
 
     # tower status

@@ -1,7 +1,7 @@
 import json
 import sys
 
-from tower.config import load_config
+from tower.config import ensure_config, load_config
 from tower.rules import evaluate_rules
 
 
@@ -26,12 +26,11 @@ def evaluate_from_stdin():
         tool_name = data.get("tool_name", "")
         tool_input = data.get("tool_input", {})
 
-        config = load_config()
+        config_path = ensure_config()
+        config = load_config(config_path)
         action, reason = evaluate_rules(config, tool_name, tool_input)
         _output_decision(action, reason)
 
-    except FileNotFoundError as e:
-        _output_decision("ask", str(e))
     except (json.JSONDecodeError, KeyError) as e:
         _output_decision("ask", f"Failed to parse input: {e}")
     except Exception as e:

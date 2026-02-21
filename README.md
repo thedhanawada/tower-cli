@@ -5,18 +5,27 @@ Permission evaluation agent for [Claude Code](https://docs.anthropic.com/en/docs
 ## Quick Start
 
 ```bash
-pip install -e .
-cd your-project
+pip install tower-cli
 tower init
 ```
 
-This creates a `tower-rules.yml` config file and installs the PreToolUse hook in `.claude/settings.json`.
+This creates `~/.claude/tower-rules.yml` and installs the PreToolUse hook in `~/.claude/settings.json` (global install, applies to all projects).
+
+To install for a specific project instead:
+
+```bash
+cd your-project
+tower init --local
+```
+
+If no config file exists when Tower evaluates a tool call, it automatically creates a default `~/.claude/tower-rules.yml` for you.
 
 ## Commands
 
 | Command          | Description                                    |
 |------------------|------------------------------------------------|
-| `tower init`     | Create default config and install Claude hook  |
+| `tower init`     | Create global config and install Claude hook   |
+| `tower init --local` | Create project-local config and hook       |
 | `tower status`   | Show current rules and hook installation state |
 | `tower config`   | Launch interactive config editor               |
 | `tower evaluate` | Evaluate a tool call from stdin (used by hook) |

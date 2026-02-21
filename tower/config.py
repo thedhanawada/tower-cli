@@ -1,4 +1,6 @@
 import os
+import sys
+
 import yaml
 
 CONFIG_FILENAME = "tower-rules.yml"
@@ -18,6 +20,25 @@ def find_config_path():
         if os.path.isfile(path):
             return path
     return None
+
+
+def ensure_config():
+    """Ensure a config file exists, creating a default one if necessary.
+
+    Returns:
+        Path to the config file.
+    """
+    path = find_config_path()
+    if path is not None:
+        return path
+
+    claude_dir = os.path.join(os.path.expanduser("~"), ".claude")
+    os.makedirs(claude_dir, exist_ok=True)
+    path = os.path.join(claude_dir, CONFIG_FILENAME)
+    with open(path, "w") as f:
+        f.write(DEFAULT_CONFIG)
+    print(f"Created default config: {path}", file=sys.stderr)
+    return path
 
 
 def load_config(path=None):
