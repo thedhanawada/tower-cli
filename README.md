@@ -1,8 +1,8 @@
 # Tower CLI
 
-Claude Code lets AI run tools on your machine — file reads, writes, bash commands, the lot. By default you're clicking "allow" on every single one, or you yolo it with `--dangerously-skip-permissions`. Neither is great.
+Claude Code lets AI run tools on your machine. File reads, writes, bash commands, the lot. By default you're clicking "allow" on every single one, or you yolo it with `--dangerously-skip-permissions`. Neither is great.
 
-Tower sits between Claude Code and tool execution as a [PreToolUse hook](https://docs.anthropic.com/en/docs/claude-code/hooks). You write rules in a YAML file — which tools to allow, which to block, which to still ask about — and Tower enforces them automatically. No more allow-fatigue, no more hoping Claude doesn't `rm -rf` something important.
+Tower sits between Claude Code and tool execution as a [PreToolUse hook](https://docs.anthropic.com/en/docs/claude-code/hooks). You write rules in a YAML file (which tools to allow, which to block, which to still ask about) and Tower enforces them automatically. No more allow-fatigue, no more hoping Claude doesn't `rm -rf` something important.
 
 ## Install
 
@@ -92,19 +92,19 @@ You get a main menu, your current config info, and arrow-key navigation:
   <img src="docs/menu.svg" alt="Tower Config main menu" width="700">
 </p>
 
-All your rules laid out in a table — green for allow, red for deny, yellow for ask:
+All your rules in a color-coded table. Green for allow, red for deny, yellow for ask:
 
 <p align="center">
   <img src="docs/rules_table.svg" alt="Rules table view" width="750">
 </p>
 
-Adding a rule — pick a tool from the fuzzy-searchable list, choose an action, done:
+Adding a rule. Pick a tool from the fuzzy-searchable list, choose an action, done:
 
 <p align="center">
   <img src="docs/add_rule.svg" alt="Add rule flow" width="700">
 </p>
 
-Deleting a rule asks for confirmation so you don't accidentally nuke something:
+Deleting a rule asks for confirmation so you don't accidentally remove something:
 
 <p align="center">
   <img src="docs/delete_confirm.svg" alt="Delete confirmation" width="700">
