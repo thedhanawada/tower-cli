@@ -1,114 +1,68 @@
 # Tower CLI
 
-Permission evaluation agent for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Tower intercepts tool calls via a PreToolUse hook and applies configurable rules to allow, deny, or prompt before execution.
+Claude Code lets AI run tools on your machine — file reads, writes, bash commands, the lot. By default you're clicking "allow" on every single one, or you yolo it with `--dangerously-skip-permissions`. Neither is great.
 
-## Quick Start
+Tower sits between Claude Code and tool execution as a [PreToolUse hook](https://docs.anthropic.com/en/docs/claude-code/hooks). You write rules in a YAML file — which tools to allow, which to block, which to still ask about — and Tower enforces them automatically. No more allow-fatigue, no more hoping Claude doesn't `rm -rf` something important.
+
+## Install
 
 ```bash
 pip install tower-cli
 tower init
 ```
 
-This creates `~/.claude/tower-rules.yml` and installs the PreToolUse hook in `~/.claude/settings.json` (global install, applies to all projects).
+That's it. This creates `~/.claude/tower-rules.yml` and wires up the hook in `~/.claude/settings.json`. Works globally across all your projects.
 
-To install for a specific project instead:
+If you want rules scoped to a single project:
 
 ```bash
 cd your-project
 tower init --local
 ```
 
-If no config file exists when Tower evaluates a tool call, it automatically creates a default `~/.claude/tower-rules.yml` for you.
+If you skip `tower init` entirely and just start using Claude Code, Tower auto-creates a default config at `~/.claude/tower-rules.yml` the first time it evaluates a tool call.
 
-## Commands
-
-| Command          | Description                                    |
-|------------------|------------------------------------------------|
-| `tower init`     | Create global config and install Claude hook   |
-| `tower init --local` | Create project-local config and hook       |
-| `tower status`   | Show current rules and hook installation state |
-| `tower config`   | Launch interactive config editor               |
-| `tower evaluate` | Evaluate a tool call from stdin (used by hook) |
-
-## Interactive Config (`tower config`)
-
-A rich, interactive TUI for managing your permission rules.
-
-### Banner & Main Menu
-
-On launch you see a styled banner with your config path, rule count, and default action, followed by the main menu with arrow-key navigation:
-
-<p align="center">
-  <img src="docs/menu.svg" alt="Tower Config main menu" width="700">
-</p>
-
-### View Rules
-
-Rules are displayed in a color-coded table with rounded borders. Actions are highlighted: green for ALLOW, red for DENY, yellow for ASK.
-
-<p align="center">
-  <img src="docs/rules_table.svg" alt="Rules table view" width="750">
-</p>
-
-### Add Rule
-
-Tool selection uses fuzzy search (type to filter). Actions show color-coded symbols for quick recognition:
-
-<p align="center">
-  <img src="docs/add_rule.svg" alt="Add rule flow" width="700">
-</p>
-
-### Delete Rule
-
-Deletions require confirmation before taking effect:
-
-<p align="center">
-  <img src="docs/delete_confirm.svg" alt="Delete confirmation" width="700">
-</p>
-
-## Configuration
-
-Tower looks for `tower-rules.yml` in these locations (first match wins):
-
-1. `./tower-rules.yml`
-2. `./.claude/tower-rules.yml`
-3. `~/.claude/tower-rules.yml`
-
-### Example Config
+## What the config looks like
 
 ```yaml
 version: 1
-default: ask  # allow | deny | ask
+default: ask  # what happens when no rule matches: allow | deny | ask
 
 rules:
-  # Allow all file reads
+  # Reads and searches are safe, let them through
   - tool: Read
     action: allow
-
-  # Allow search tools
   - tool: Glob
     action: allow
   - tool: Grep
     action: allow
 
-  # Allow safe bash commands
+  # Allow harmless bash commands
   - tool: Bash
     command_pattern: "^(ls|cat|git status|git diff|npm test|pytest).*"
     action: allow
 
-  # Deny destructive commands
+  # Block destructive bash commands outright
   - tool: Bash
     command_pattern: "rm -rf|git push --force|DROP TABLE"
     action: deny
     reason: "Destructive command blocked by Tower"
 
-  # Allow writes to specific file types
+  # Allow writes only to code files
   - tool: Write
     path_pattern: "**/*.{py,js,ts,json,yml,yaml,md}"
     action: allow
 ```
 
-### Rule Fields
+Rules are evaluated top-to-bottom, first match wins. If nothing matches, the `default` action kicks in.
+
+Tower looks for `tower-rules.yml` in this order:
+
+1. `./tower-rules.yml` (project root)
+2. `./.claude/tower-rules.yml` (project-local)
+3. `~/.claude/tower-rules.yml` (global)
+
+### Rule fields
 
 | Field             | Required | Description                                    |
 |-------------------|----------|------------------------------------------------|
@@ -116,28 +70,58 @@ rules:
 | `action`          | Yes      | `allow`, `deny`, or `ask`                      |
 | `command_pattern` | No       | Regex pattern for Bash commands                 |
 | `path_pattern`    | No       | Glob pattern for file paths                     |
-| `reason`          | No       | Message shown when rule matches                 |
+| `reason`          | No       | Message shown when a rule triggers              |
 
-### How Evaluation Works
+## Commands
 
-1. Claude Code invokes a tool (e.g., `Bash` with command `rm -rf /`)
-2. The PreToolUse hook sends the tool call to `tower evaluate`
-3. Tower checks rules top-to-bottom; the first matching rule wins
-4. If no rule matches, the `default` action is used
-5. Tower returns `allow`, `deny`, or `ask` to Claude Code
+| Command              | What it does                                       |
+|----------------------|----------------------------------------------------|
+| `tower init`         | Set up global config + hook in `~/.claude/`        |
+| `tower init --local` | Set up project-local config + hook in `./.claude/` |
+| `tower status`       | Show loaded rules and whether the hook is wired up |
+| `tower config`       | Interactive TUI for editing rules                  |
+| `tower evaluate`     | Evaluate a tool call from stdin (called by hook)   |
+
+## Interactive config
+
+Don't want to edit YAML by hand? `tower config` gives you a TUI.
+
+You get a main menu, your current config info, and arrow-key navigation:
+
+<p align="center">
+  <img src="docs/menu.svg" alt="Tower Config main menu" width="700">
+</p>
+
+All your rules laid out in a table — green for allow, red for deny, yellow for ask:
+
+<p align="center">
+  <img src="docs/rules_table.svg" alt="Rules table view" width="750">
+</p>
+
+Adding a rule — pick a tool from the fuzzy-searchable list, choose an action, done:
+
+<p align="center">
+  <img src="docs/add_rule.svg" alt="Add rule flow" width="700">
+</p>
+
+Deleting a rule asks for confirmation so you don't accidentally nuke something:
+
+<p align="center">
+  <img src="docs/delete_confirm.svg" alt="Delete confirmation" width="700">
+</p>
+
+## How it works under the hood
+
+1. Claude Code is about to run a tool (say, `Bash` with `rm -rf /tmp/stuff`)
+2. The PreToolUse hook pipes the tool call to `tower evaluate` via stdin
+3. Tower loads your rules, checks them top-to-bottom
+4. First matching rule decides: `allow`, `deny`, or `ask`
+5. If no rule matches, the `default` action is used
+6. Tower sends the decision back to Claude Code
 
 ## Development
 
 ```bash
-# Install with dev dependencies
 pip install -e ".[dev]"
-
-# Run tests
 pytest
 ```
-
-## Dependencies
-
-- [PyYAML](https://pyyaml.org/) — config file parsing
-- [InquirerPy](https://inquirerpy.readthedocs.io/) — interactive prompts
-- [Rich](https://rich.readthedocs.io/) — styled terminal output
